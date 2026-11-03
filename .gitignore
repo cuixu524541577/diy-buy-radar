@@ -1,0 +1,9 @@
+node_modules
+dist
+.env
+data/pglite
+data/reports/*.md
+data/reports/*.html
+!data/reports/.gitkeep
+*.log
+.DS_Store

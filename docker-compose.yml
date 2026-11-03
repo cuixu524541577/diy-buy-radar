@@ -1,0 +1,65 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: radar
+      POSTGRES_PASSWORD: radar
+      POSTGRES_DB: diy_buy_radar
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./api/src/db/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U radar -d diy_buy_radar"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  api:
+    build:
+      context: .
+      dockerfile: api/Dockerfile
+    environment:
+      DATABASE_URL: postgres://radar:radar@postgres:5432/diy_buy_radar
+      REDIS_URL: redis://redis:6379
+      API_PORT: "3001"
+      WEB_ORIGIN: http://localhost:5173
+      REPORTS_DIR: /app/data/reports
+      BUDGET_CNY: "7000"
+      FRED_API_KEY: ${FRED_API_KEY:-}
+      WEEKLY_REPORT_TO: 524541577@qq.com
+      AGENT_EMAIL_FROM: cuixu524541577-54mbqn@mail.grokbot.com
+    ports:
+      - "3001:3001"
+    volumes:
+      - ./data/reports:/app/data/reports
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  web:
+    build:
+      context: .
+      dockerfile: web/Dockerfile
+    environment:
+      VITE_API_BASE: http://localhost:3001
+    ports:
+      - "5173:80"
+    depends_on:
+      - api
+
+volumes:
+  pgdata:

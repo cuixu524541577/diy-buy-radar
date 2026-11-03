@@ -1,0 +1,22 @@
+{
+  "name": "diy-buy-radar",
+  "private": true,
+  "version": "0.1.0",
+  "description": "DIY Buy Radar Phase-2 MVP",
+  "workspaces": [
+    "api",
+    "web"
+  ],
+  "scripts": {
+    "dev:api": "npm run dev -w api",
+    "dev:web": "npm run dev -w web",
+    "build": "npm run build -w api && npm run build -w web",
+    "start:api": "npm run start -w api",
+    "collect": "npm run collect -w api",
+    "report:weekly": "npm run report:weekly -w api"
+  },
+  "allowScripts": {
+    "esbuild@0.28.2": true,
+    "esbuild@0.25.12": true
+  }
+}
