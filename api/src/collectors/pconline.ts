@@ -18,7 +18,7 @@ type Watch = {
 const WATCHES: Watch[] = [
   {
     product_key: 'cpu-9600x',
-    list_url: 'https://product.pconline.com.cn/cpu/',
+    list_url: 'https://product.pconline.com.cn/cpu/amd/',
     include: /9600X/i,
   },
   {
@@ -33,34 +33,46 @@ const WATCHES: Watch[] = [
     include: /RTX\s*5070(?!\s*Ti)/i,
   },
   {
+    // First-page lists skew to 50-series; miss → unknown (do not invent).
     product_key: 'gpu-4070tis',
     list_url: 'https://product.pconline.com.cn/vga/',
     include: /4070\s*Ti\s*SUPER|4070Ti\s*SUPER|4070\s*TiS/i,
   },
   {
+    // Tomahawk often off first page; also accept nearby B650 boards as soft match? No — keep exact.
     product_key: 'mb-b650-tomahawk',
     list_url: 'https://product.pconline.com.cn/mb/',
-    include: /B650.*TOMAHAWK|TOMAHAWK.*B650/i,
+    include: /B650.*TOMAHAWK|TOMAHAWK.*B650|B650.*迫击|迫击炮.*B650/i,
   },
 ];
+
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 export type ListedQuote = { title: string; price_cny: number };
 
 /** Extract title→price pairs from PConline category list HTML. */
 export function parsePconlineListPrices(html: string): ListedQuote[] {
   const out: ListedQuote[] = [];
-  const re = /_price\.html"[^>]*title="([^"]+)"[^>]*>([0-9]{3,6})</g;
+  // Optional currency / encoding junk between ">" and digits (GBK pages often show ￥1949)
+  const re =
+    /_price\.html"[^>]*title="([^"]+)"[^>]*>(?:\s|￥|¥|&yen;|Ã¥|Â¥|[\u00A0-\u00FF]){0,6}([0-9]{3,6})\s*</g;
   let m: RegExpExecArray | null;
   while ((m = re.exec(html))) {
-    const title = m[1].trim();
+    const title = m[1].replace(/\s+/g, ' ').trim();
     const price = Number(m[2]);
     if (title && Number.isFinite(price) && price > 0) out.push({ title, price_cny: price });
   }
-  // fallback: price-now near title
   if (!out.length) {
     const re2 =
-      /title="([^"]{3,120})"[^>]*>[\s\S]{0,500}?class="price price-now"[^>]*>\s*([0-9]{3,6})/g;
+      /_price\.html"[^>]*>[^0-9]{0,8}([0-9]{3,6})[\s\S]{0,120}?title="([^"]+)"/g;
     while ((m = re2.exec(html))) {
+      out.push({ title: m[2].replace(/\s+/g, ' ').trim(), price_cny: Number(m[1]) });
+    }
+  }
+  if (!out.length) {
+    const re3 =
+      /title="([^"]{3,120})"[^>]*>[\s\S]{0,500}?class="price price-now"[^>]*>\s*([0-9]{3,6})/g;
+    while ((m = re3.exec(html))) {
       out.push({ title: m[1].trim(), price_cny: Number(m[2]) });
     }
   }
@@ -114,24 +126,37 @@ export async function collectPconline(db: Db): Promise<CollectSummary> {
       }
 
       if (!cache.has(watch.list_url)) {
-        try {
-          const res = await fetchText(watch.list_url);
-          if (!res.ok) {
-            cache.set(watch.list_url, { status: 'error', quotes: [], reason: `HTTP ${res.status}` });
-          } else if (looksGated(res.text) && res.text.length < 2000) {
-            cache.set(watch.list_url, { status: 'unknown', quotes: [], reason: 'page looks gated/challenge' });
-          } else {
-            const quotes = parsePconlineListPrices(res.text);
-            cache.set(watch.list_url, {
-              status: quotes.length ? 'ok' : 'unknown',
-              quotes,
-              reason: quotes.length ? undefined : 'no price pairs parsed',
-              rawLen: res.text.length,
-            });
+        let lastErr = '';
+        let stored = false;
+        for (let attempt = 0; attempt < 2 && !stored; attempt++) {
+          if (attempt > 0) await sleep(1200);
+          try {
+            const res = await fetchText(watch.list_url);
+            if (!res.ok) {
+              lastErr = `HTTP ${res.status}`;
+              if (attempt === 1) cache.set(watch.list_url, { status: 'error', quotes: [], reason: lastErr });
+            } else if (looksGated(res.text) && res.text.length < 2000) {
+              cache.set(watch.list_url, { status: 'unknown', quotes: [], reason: 'page looks gated/challenge' });
+              stored = true;
+            } else {
+              const quotes = parsePconlineListPrices(res.text);
+              cache.set(watch.list_url, {
+                status: quotes.length ? 'ok' : 'unknown',
+                quotes,
+                reason: quotes.length ? undefined : 'no price pairs parsed',
+                rawLen: res.text.length,
+              });
+              stored = true;
+            }
+          } catch (e) {
+            lastErr = (e as Error).message;
+            if (attempt === 1) cache.set(watch.list_url, { status: 'error', quotes: [], reason: lastErr });
           }
-        } catch (e) {
-          cache.set(watch.list_url, { status: 'error', quotes: [], reason: (e as Error).message });
         }
+        if (!cache.has(watch.list_url)) {
+          cache.set(watch.list_url, { status: 'error', quotes: [], reason: lastErr || 'fetch failed' });
+        }
+        await sleep(800); // polite once-daily pacing between distinct list URLs
       }
 
       const page = cache.get(watch.list_url)!;

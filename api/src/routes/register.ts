@@ -114,8 +114,24 @@ export async function registerRoutes(app: FastifyInstance, db: Db, meta: { jobs:
     return { profile: rows[0]?.value || null };
   });
 
+  app.get<{ Querystring: { limit?: string } }>('/chip-spot', async (req) => {
+    const limit = Math.min(Number(req.query.limit || 100), 500);
+    const { rows } = await db.query(
+      `SELECT * FROM chip_spot_snapshots ORDER BY collected_at DESC LIMIT $1`,
+      [limit],
+    );
+    return { items: rows };
+  });
+
   app.post<{ Querystring: { only?: string } }>('/collect', async (req) => {
-    const only = (req.query.only || 'all') as 'all' | 'macro' | 'gpu_rent' | 'jd';
+    const only = (req.query.only || 'all') as
+      | 'all'
+      | 'macro'
+      | 'gpu_rent'
+      | 'jd'
+      | 'dram'
+      | 'pconline'
+      | 'zol';
     const summaries = await runCollectors(db, [only]);
     const scores = await scoreAllActive(db);
     return { ok: true, summaries, scores_preview: scores.map((s) => ({

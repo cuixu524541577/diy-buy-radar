@@ -22,16 +22,18 @@ export function parseTrendforceDramSpot(html: string): { rows: DramRow[]; dataTi
     html.match(/Last Update\s+([0-9]{4}-[0-9]{2}-[0-9]{2}\s+[0-9]{2}:[0-9]{2}[^\n<]*)/i)?.[1]?.trim() ||
     null;
 
-  // Item label followed by five lcd-num-l cells (daily H/L, session H/L, avg)
+  // Match chip spot rows anywhere (nav headers appear before the real table; do not slice by heading).
+  // Require "(xGb" style chip labels; exclude GDDR / DIMM module lines.
   const re =
-    /(DDR[0-9][^<]{2,80}?)<\/span>\s*<\/td>\s*<td class="lcd-num-l">([0-9.]+)<\/td>\s*<td class="lcd-num-l">([0-9.]+)<\/td>\s*<td class="lcd-num-l">([0-9.]+)<\/td>\s*<td class="lcd-num-l">([0-9.]+)<\/td>\s*<td class="lcd-num-l">([0-9.]+)<\/td>/g;
+    /(?<![\w])((?:DDR[45])[^<]{2,80}?)<\/span>\s*<\/td>\s*<td class="lcd-num-l">([0-9.]+)<\/td>\s*<td class="lcd-num-l">([0-9.]+)<\/td>\s*<td class="lcd-num-l">([0-9.]+)<\/td>\s*<td class="lcd-num-l">([0-9.]+)<\/td>\s*<td class="lcd-num-l">([0-9.]+)<\/td>/g;
   let m: RegExpExecArray | null;
   while ((m = re.exec(html))) {
     const item = m[1].replace(/<[^>]+>/g, '').trim();
     const nums = m.slice(2, 7).map(Number);
     if (!item || nums.some((n) => !Number.isFinite(n))) continue;
-    // change % nearby
-    const slice = html.slice(m.index, m.index + 450);
+    if (/GDDR|UDIMM|RDIMM|SO-?DIMM|Module/i.test(item)) continue;
+    if (!/\d+\s*Gb/i.test(item)) continue; // chip die capacity marker
+    const slice = html.slice(m.index, m.index + 500);
     const ch = slice.match(/([+\-–—]?\s*[0-9]+\.[0-9]+)\s*%/);
     let change: number | null = null;
     if (ch) {

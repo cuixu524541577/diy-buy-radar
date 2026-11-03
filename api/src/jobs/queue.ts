@@ -28,7 +28,8 @@ export async function startJobs(db: Db): Promise<{
     try {
       const { Queue, Worker } = await import('bullmq');
       const connection = { url: env.redisUrl };
-      const IORedis = (await import('ioredis')).default;
+      const RedisMod = await import('ioredis');
+      const IORedis = (RedisMod as unknown as { default: new (url: string, opts?: object) => { connect(): Promise<void>; ping(): Promise<string>; quit(): Promise<void> } }).default;
       const probe = new IORedis(env.redisUrl, { maxRetriesPerRequest: 1, lazyConnect: true });
       await probe.connect();
       await probe.ping();

@@ -1,9 +1,9 @@
 import { getDb, ensureSchema } from '../db/client.js';
 import { seedIfEmpty } from '../db/seed.js';
-import { runCollectors } from '../collectors/index.js';
+import { runCollectors, type CollectorName } from '../collectors/index.js';
 import { scoreAllActive } from '../scoring/calculator.js';
 
-const only = (process.argv[2] as 'all' | 'macro' | 'gpu_rent' | 'jd') || 'all';
+const only = (process.argv[2] as CollectorName) || 'all';
 
 const db = await getDb();
 await ensureSchema(db);

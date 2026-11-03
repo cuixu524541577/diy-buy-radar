@@ -66,20 +66,15 @@ export async function ensureSchema(db: Db): Promise<void> {
   const schemaPath = path.join(__dirname, 'schema.sql');
   const schema = fs.readFileSync(schemaPath, 'utf8');
   if (db.kind === 'pglite') {
-    // PGlite prefers exec for multi-statement SQL
-    const { PGlite } = await import('@electric-sql/pglite');
-    void PGlite;
-    // db.query may not accept multi-statement; split on semicolons carefully
     const parts = schema
-      .split(/;\s*
-/)
+      .split(';' + String.fromCharCode(10))
       .map((s) => s.trim())
-      .filter((s) => s && !s.startsWith('--'));
+      .filter((s) => s.length > 0 && !s.startsWith('--'));
     for (const part of parts) {
+      const stmt = part.endsWith(';') ? part : part + ';';
       try {
-        await db.query(part.endsWith(';') ? part : part + ';');
+        await db.query(stmt);
       } catch (e) {
-        // ignore "already exists" style races; log others
         const msg = (e as Error).message || '';
         if (!/already exists|duplicate/i.test(msg)) {
           console.warn('[schema]', msg.slice(0, 160), '::', part.slice(0, 80));
