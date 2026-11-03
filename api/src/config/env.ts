@@ -22,7 +22,7 @@ export const env = {
   fredApiKey: process.env.FRED_API_KEY || '',
   budgetCny: Number(process.env.BUDGET_CNY || 7000),
   platform: process.env.PLATFORM || 'Ryzen 9600X',
-  weeklyReportTo: process.env.WEEKLY_REPORT_TO || '524541577@qq.com',
-  agentEmailFrom: process.env.AGENT_EMAIL_FROM || 'cuixu524541577-54mbqn@mail.grokbot.com',
+  weeklyReportTo: process.env.WEEKLY_REPORT_TO || '',
+  agentEmailFrom: process.env.AGENT_EMAIL_FROM || '',
   pgliteDir: process.env.PGLITE_DIR || path.resolve(__dirname, '../../../data/pglite'),
 };

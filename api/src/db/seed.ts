@@ -1,4 +1,5 @@
 import type { Db } from './client.js';
+import { env } from '../config/env.js';
 
 const SOURCES = [
   {
@@ -223,7 +224,7 @@ export async function seedIfEmpty(db: Db): Promise<void> {
         platform: 'Ryzen 9600X',
         existing: { ssd_gb: 512, gpu: null },
         uses: ['AI图片生成', 'ComfyUI', '视频制作', '摄影后期', '日常工作'],
-        weekly_report_to: '524541577@qq.com',
+        weekly_report_to: env.weeklyReportTo || null,
       }),
     ],
   );

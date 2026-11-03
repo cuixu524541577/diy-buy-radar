@@ -82,8 +82,8 @@ export async function generateWeeklyReport(db: Db) {
 - 用户时区参考：Etc/GMT+5 (UTC-5)
 - 平台：${env.platform}
 - 预算：¥${env.budgetCny}
-- 收件人（授权）：${env.weeklyReportTo}
-- 发信地址（主代理发送时使用）：${env.agentEmailFrom}
+- 收件人：${env.weeklyReportTo || '未配置（请设置 WEEKLY_REPORT_TO）'}
+- 发信地址：${env.agentEmailFrom || '未配置（请设置 AGENT_EMAIL_FROM）'}
 
 ## 1. 整体入手评分
 
@@ -143,7 +143,7 @@ ${prices.map((p) => `- ${p.product_key}: ${p.price_cny != null ? '¥' + p.price_
 
 ---
 
-> 邮件发送：本文件由 API 生成。主代理请用 agent inbox（${env.agentEmailFrom}）向 ${env.weeklyReportTo} 发送。
+> 邮件发送：本文件由 API 生成，不直接发信。请用你在 .env 中配置的 ${env.agentEmailFrom || 'AGENT_EMAIL_FROM'} 发给 ${env.weeklyReportTo || 'WEEKLY_REPORT_TO'}。
 > 调用：\`GET /reports/weekly/latest\` 或 \`npm run report:weekly -w api\`
 `;
 
@@ -164,7 +164,7 @@ ${scored
   .join('\n')}
 </tbody></table>
 <pre style="white-space:pre-wrap;background:#f6f8fa;padding:1rem;border-radius:8px">${esc(md)}</pre>
-<p style="color:#666;font-size:12px">发信由主代理使用 ${esc(env.agentEmailFrom)} → ${esc(env.weeklyReportTo)}</p>
+<p style="color:#666;font-size:12px">发信请自行配置：${esc(env.agentEmailFrom || 'AGENT_EMAIL_FROM')} → ${esc(env.weeklyReportTo || 'WEEKLY_REPORT_TO')}</p>
 </body></html>`;
 
   fs.mkdirSync(env.reportsDir, { recursive: true });
@@ -185,10 +185,12 @@ ${scored
     advice,
     paths: { md: mdPath, html: htmlPath, latest_md: latestMd, latest_html: latestHtml },
     email: {
-      to: env.weeklyReportTo,
-      from: env.agentEmailFrom,
+      to: env.weeklyReportTo || null,
+      from: env.agentEmailFrom || null,
       subject: `DIY Buy Radar 周报 ${now.toISOString().slice(0, 10)} · 整体 ${overall ?? 'unknown'}`,
-      note: 'Executor 不直接发信；主代理用 DraftExternalMessage / agent inbox 发送 latest md/html 内容',
+      note: env.weeklyReportTo
+        ? '本服务不直接发信。请用 AGENT_EMAIL_FROM 把 latest 报告发给 WEEKLY_REPORT_TO。'
+        : '未配置收件邮箱。请在 .env 设置 WEEKLY_REPORT_TO 与 AGENT_EMAIL_FROM。',
     },
     scored_count: scored.length,
     unknown_count: unknownScores.length,
@@ -211,8 +213,8 @@ export function readLatestWeekly(format: 'md' | 'html' | 'meta' = 'md') {
       html_path: fs.existsSync(html) ? html : null,
       mtime: st.mtime.toISOString(),
       size: st.size,
-      email_to: env.weeklyReportTo,
-      email_from: env.agentEmailFrom,
+      email_to: env.weeklyReportTo || null,
+      email_from: env.agentEmailFrom || null,
     };
   }
   return { format: 'md', content: fs.readFileSync(md, 'utf8'), path: md };

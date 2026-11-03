@@ -38,8 +38,8 @@ services:
       REPORTS_DIR: /app/data/reports
       BUDGET_CNY: "7000"
       FRED_API_KEY: ${FRED_API_KEY:-}
-      WEEKLY_REPORT_TO: 524541577@qq.com
-      AGENT_EMAIL_FROM: cuixu524541577-54mbqn@mail.grokbot.com
+      WEEKLY_REPORT_TO: ${WEEKLY_REPORT_TO:-}
+      AGENT_EMAIL_FROM: ${AGENT_EMAIL_FROM:-}
     ports:
       - "3001:3001"
     volumes:

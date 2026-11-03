@@ -12,8 +12,7 @@ Ryzen 9600X 平台入手时机监测最小闭环：免费宏观/DRAM/GPU 租赁�
 | 优先 | 显卡 + DDR5 |
 | 预算 | ≈ ¥7000 |
 | 国内价 | 京东自营公开价（常失败）+ PConline **参考价**日更抽样；ZOL 脆弱 |
-| 周报收件人 | `524541577@qq.com`（已授权） |
-| 发信地址 | `cuixu524541577-54mbqn@mail.grokbot.com`（由主代理发送） |
+| 周报邮箱 | 不内置。各自在 `.env` 填写 `WEEKLY_REPORT_TO`、`AGENT_EMAIL_FROM` |
 | Vast | 暂不定，MVP 不依赖 |
 
 ## 免费 / 低摩擦数据源清单
